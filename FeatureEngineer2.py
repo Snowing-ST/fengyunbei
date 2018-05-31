@@ -84,8 +84,55 @@ class FeatureEngineer:
         plt.scatter(x,t,c='k')
         plt.show()
     
-    def discret_null(self,thresh_list):
-        self._data["discret_null"] = 1
-        """每个样本的缺失个数离散化"""
-        pass
+    def string_get_dummy(self):  ##encoding all the string features with "get_dummies"
+#        object_feature_df = self._df.select_dtypes(include=['O'])
+        encoding_object_feature = pd.get_dummies(self._df, drop_first=True)
+        return encoding_object_feature   ### retun the encoding_object_df and object_feature_df
+
+    def string_label_encode(self,var):  ##encoding all the string features with "label"
+        """定序变量(category类)：label encode"""
+        try: 
+            self._df[var].dtype=="category"
+            encoder = LabelEncoder()
+            var_data = self._df.loc[:,[var]]
+            var_data_encode = encoder.fit_transform(var_data)
+            self._df[var] = var_data_encode
+    #        print(self._df.head())
+        except:
+            pass
+        return self._df
+    
+    def string_get_dummy_less(self,var,Y):
+#        n_class = 10
+#        n_large_class = 5
+#        n_large_class_proportion = 0.5
+        """类别超过10类，前5个数量最多的类别占总样本数50%以下
+        把对Y有影响的类别get dummy"""
+
+        good_pay_rate = self._df.groupby([var])[Y].mean()
+        imp_class = list(good_pay_rate.sort_values(ascending=False).index[:5])#important classes
+        self._df[var] = self._df[var].apply(lambda x: x if x in imp_class else "others")
+#        print(self._df[var].value_counts())
+        newdummies = pd.get_dummies(self._df[var],prefix = var).drop(["others"],axis=1)
+#        print(newdummies)
+        self._df.drop(var,axis = 1,inplace = True)
+        self._df = pd.concat([self._df,newdummies],axis = 1)
+#        newdf = pd.concat([self._df,newdummies],axis = 1)
+#        newdf.drop(var,axis = 1,inplace = True)
+        return self._df
+    def string_get_dummy_less2(self,var,Y):
+        """类别超过10类，前5类数量最多的类别占总样本数50%以上
+        把对Y有影响、包含样本多的类别get dummy"""
+        good_pay_rate = self._df.groupby([var])[Y].mean()
+        imp_class = list(good_pay_rate.sort_values(ascending=False).index[:5])#important classes
+        count = self._df.groupby([var])[Y].count()
+        
+        large_class = list(count.sort_values(ascending=False).index[:5])#classes that contain large samples 
+        imp_class.extend(large_class)
+        self._df[var] = self._df[var].apply(lambda x: x if x in np.unique(imp_class) else "others")
+        newdummies = pd.get_dummies(self._df[var],prefix = var).drop(["others"],axis=1)
+        self._df.drop(var,axis = 1,inplace = True)
+        self._df = pd.concat([self._df,newdummies],axis = 1)       
+#        print(self._df.columns)
+        return self._df
         
